@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Da Capo - Sistema de Gestión Completo</title>
+    <style>
+        :root {
+            --rojo-header: #ff3b30; --azul-barra: #007aff; --verde-hora: #76a8a1;
+            --verde-libre: #c2e5c5; --rojo-ocupado: #f5b7bd;
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; flex-direction: column; align-items: center; padding: 20px; height: 100vh; overflow: hidden; }
+        
+        /* Layout Superior */
+        .header-container { width: 1200px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .main-layout { display: flex; gap: 20px; width: 1200px; margin-top: 15px; flex-grow: 1; min-height: 0; }
+
+        /* Sidebar de Instrumentos */
+        .sidebar { width: 180px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); align-self: flex-start; }
+        .sidebar h3 { font-size: 14px; color: #666; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .inst-btn { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #eee; border-radius: 8px; background: #fff; cursor: pointer; text-align: left; font-weight: bold; font-size: 13px; transition: 0.2s; }
+        .inst-btn.active { background: var(--azul-barra); color: white; border-color: var(--azul-barra); }
+
+        /* Tabla y Scroll */
+        .tabla-wrapper { flex-grow: 1; background: white; border-radius: 10px; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.08); position: relative; }
+        table { border-collapse: separate; border-spacing: 2px; width: 100%; table-layout: fixed; }
+
+        /* --- CABECERAS FIJAS --- */
+        thead { position: sticky; top: 0; z-index: 100; }
+
+        .semana-banner-row th {
+            background: var(--azul-barra); 
+            color: white; 
+            padding: 12px; 
+            font-size: 14px;  
+            letter-spacing: 1px;
+            border: none;
+        }
+
+        .dias-header-row th { 
+            padding: 10px; 
+            color: white; 
+            font-size: 12px; 
+            text-align: center;
+            border: none;
+        }
+        .dia-numero { display: block; font-size: 18px; font-weight: bold; }
+
+        /* --- COLUMNA DE HORAS FIJA --- */
+        td { height: 85px; border: 1px solid #f0f0f0; padding: 5px; font-size: 11px; vertical-align: top; cursor: pointer; background: #fff; }
+        .col-hora { 
+            position: sticky; 
+            left: 0; 
+            z-index: 110; 
+            background-color: var(--verde-hora) !important; 
+            color: white; 
+            font-weight: bold; 
+            text-align: center; 
+            width: 90px; 
+            vertical-align: middle; 
+            border: none !important; 
+        }
+
+        /* Meses */
+        .mes-btn { background: white; border: 1px solid #ddd; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; transition: 0.2s; }
+        .mes-btn.active { background: var(--azul-barra) !important; color: white !important; border-color: var(--azul-barra) !important; }
+
+        /* Elementos de celda */
+        .badge-alumno { background: #f8f9fa; border-left: 3px solid var(--azul-barra); padding: 2px 4px; margin-bottom: 3px; border-radius: 3px; font-size: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .cupo-indicador { font-size: 9px; color: #999; display: block; text-align: right; margin-top: auto; }
+        
+        /* Icono Calendario */
+        .mini-calendar { width: 140px; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid #ddd; text-align: center; }
+        .mc-header { background: var(--rojo-header); color: white; padding: 5px; }
+        .mc-header select { background: transparent; border: none; color: white; font-weight: bold; font-size: 18px; outline: none; cursor: pointer; }
+        .mc-blue-bar { background: var(--azul-barra); color: white; font-size: 10px; padding: 2px 0; font-weight: bold; }
+        .mc-month-display { font-size: 22px; font-weight: bold; padding: 10px 0; color: #333; }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="mini-calendar">
+            <div class="mc-header"><select id="yearSelect"></select></div>
+            <div class="mc-blue-bar">CALENDARIO</div>
+            <div id="monthLabel" class="mc-month-display">ENE</div>
+        </div>
+        <div class="titulo-container" style="text-align:center; flex-grow:1">
+            <h1 style="font-family:'cursive'; color:#4672a1; margin:0">Horario Da Capo</h1>
+            <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:10px;">
+                <button onclick="cambiarSemana(-1)" style="cursor:pointer; border:none; background:none; font-size:20px;">◀</button>
+                <div id="mesesContainer" style="display:flex; gap:3px;"></div>
+                <button onclick="cambiarSemana(1)" style="cursor:pointer; border:none; background:none; font-size:20px;">▶</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="sidebar">
+            <h3>Instrumentos</h3>
+            <button class="inst-btn active" onclick="filtrar('Todos', this)">📁 Todos</button>
+            <button class="inst-btn" onclick="filtrar('Piano', this)">🎹 Piano</button>
+            <button class="inst-btn" onclick="filtrar('Violín', this)">🎻 Violín</button>
+            <button class="inst-btn" onclick="filtrar('Canto', this)">🎤 Canto</button>
+        </div>
+
+        <div class="tabla-wrapper">
+            <table>
+                <thead>
+                    <tr class="semana-banner-row">
+                        <th style="background: white;"></th>
+                        <th colspan="6" id="semanaBanner">Cargando...</th>
+                    </tr>
+                    <tr class="dias-header-row" id="cabecera-dias">
+                        <th style="background: white; width:90px"></th>
+                        <th style="background:#76a8a1">LUN <span class="dia-numero"></span></th>
+                        <th style="background:#cb9ca1">MAR <span class="dia-numero"></span></th>
+                        <th style="background:#a894bc">MIE <span class="dia-numero"></span></th>
+                        <th style="background:#f2d281">JUE <span class="dia-numero"></span></th>
+                        <th style="background:#8bb3ba">VIE <span class="dia-numero"></span></th>
+                        <th style="background:#5b87b5">SAB <span class="dia-numero"></span></th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-body"></tbody>
+            </table>
+        </div>
+    </div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        const mesesNombres = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+        let fechaReferencia = new Date(); 
+        let filtroActual = "Todos";
+        const CONFIG_CUPOS = { "Piano": 3, "Violín": 5, "Canto": 10 };
+
+        // Inicializar Años
+        const yearSelect = document.getElementById('yearSelect');
+        for (let y = 2024; y <= 2050; y++) {
+            let opt = document.createElement('option');
+            opt.value = y; opt.innerText = y;
+            yearSelect.appendChild(opt);
+        }
+        yearSelect.value = fechaReferencia.getFullYear();
+        yearSelect.onchange = () => { fechaReferencia.setFullYear(yearSelect.value); actualizarTablero(); };
+
+        // Inicializar Botones de Mes
+        const mesesContainer = document.getElementById('mesesContainer');
+        mesesNombres.forEach((mes, idx) => {
+            let btn = document.createElement('button');
+            btn.className = 'mes-btn';
+            btn.id = 'btn-mes-' + idx;
+            btn.innerText = mes;
+            btn.onclick = () => {
+                fechaReferencia.setMonth(idx);
+                fechaReferencia.setDate(1);
+                actualizarTablero();
+            };
+            mesesContainer.appendChild(btn);
+        });
+
+        function cambiarSemana(dir) {
+            fechaReferencia.setDate(fechaReferencia.getDate() + (dir * 7));
+            actualizarTablero();
+        }
+
+        function filtrar(inst, btn) {
+            document.querySelectorAll('.inst-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            filtroActual = inst;
+            actualizarTablero();
+        }
+
+        function getNumeroSemana(fecha) {
+            const primeroDeMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+            const diaSemanaPrimero = primeroDeMes.getDay() || 7;
+            return Math.ceil((fecha.getDate() + diaSemanaPrimero - 1) / 7);
+        }
+
+        function actualizarTablero() {
+            let d = new Date(fechaReferencia);
+            let day = d.getDay();
+            let diff = d.getDate() - day + (day == 0 ? -6 : 1);
+            let lunes = new Date(d.setDate(diff));
+            let sabado = new Date(lunes); sabado.setDate(lunes.getDate() + 5);
+
+            // CORRECCIÓN: Marcar mes basado en fechaReferencia
+            document.querySelectorAll('.mes-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-mes-' + fechaReferencia.getMonth()).classList.add('active');
+
+            // Actualizar Banner e Icono
+            let nSemana = getNumeroSemana(lunes);
+            document.getElementById('semanaBanner').innerText = `SEMANA ${nSemana} (${lunes.getDate()} de ${mesesNombres[lunes.getMonth()]} - ${sabado.getDate()} de ${mesesNombres[sabado.getMonth()]})`;
+            document.getElementById('monthLabel').innerText = mesesNombres[fechaReferencia.getMonth()];
+            yearSelect.value = fechaReferencia.getFullYear();
+            
+            // Actualizar Números de Días
+            const ths = document.querySelectorAll('#cabecera-dias span');
+            let fechasSemana = [];
+            for(let i=0; i<6; i++) {
+                let f = new Date(lunes);
+                f.setDate(lunes.getDate() + i);
+                ths[i].innerText = f.getDate();
+                fechasSemana.push(f.toISOString().split('T')[0]);
+            }
+
+            const tablaBody = document.getElementById('tabla-body');
+            tablaBody.innerHTML = "";
+
+            for (let h = 8; h < 21; h++) {
+                let fila = document.createElement('tr');
+                let rango = `${h}:00 - ${h+1}:00`;
+                fila.innerHTML = `<td class="col-hora">${rango}</td>`;
+                
+                fechasSemana.forEach(fechaID => {
+                    let idCelda = `${rango}_${fechaID}`;
+                    let repo = JSON.parse(localStorage.getItem('capo_data')) || {};
+                    let alumnos = repo[idCelda] || [];
+                    let filtrados = filtroActual === "Todos" ? alumnos : alumnos.filter(a => a.inst === filtroActual);
+                    
+                    let td = document.createElement('td');
+                    filtrados.forEach(a => {
+                        td.innerHTML += `<div class="badge-alumno"><span><b>${a.inst.charAt(0)}:</b> ${a.nombre}</span></div>`;
+                    });
+                    td.innerHTML += `<span class="cupo-indicador">${filtrados.length} cupos</span>`;
+                    td.onclick = () => abrirModal(idCelda);
+                    fila.appendChild(td);
+                });
+                tablaBody.appendChild(fila);
+            }
+        }
+
+        async function abrirModal(id) {
+            if (filtroActual === "Todos") return Swal.fire('Aviso', 'Selecciona un instrumento lateral', 'info');
+            
+            let repo = JSON.parse(localStorage.getItem('capo_data')) || {};
+            let alumnos = repo[id] || [];
+            let inscritos = alumnos.filter(a => a.inst === filtroActual).length;
+            let max = CONFIG_CUPOS[filtroActual];
+
+            // Generar lista de alumnos actuales del instrumento para poder borrar
+            let listaHTML = alumnos.filter(a => a.inst === filtroActual).map((a) => {
+                let realIndex = alumnos.indexOf(a);
+                return `<div style="display:flex; justify-content:space-between; align-items:center; background:#f4f4f4; padding:8px; margin-bottom:5px; border-radius:5px;">
+                    <span style="font-size:13px;"><b>${a.inst}:</b> ${a.nombre}</span>
+                    <button onclick="borrarRegistro('${id}',${realIndex})" style="background:red; color:white; border:none; border-radius:3px; cursor:pointer; padding:2px 8px;">✕</button>
+                </div>`;
+            }).join('') || '<p style="color:#999">Sin inscritos.</p>';
+
+            const { value: nombreAlumno } = await Swal.fire({
+                title: `Gestionar ${filtroActual}`,
+                html: `
+                    <div style="background:#eef7ff; padding:10px; border-radius:8px; margin-bottom:10px; text-align:left;">
+                        <strong>Capacidad: ${inscritos} / ${max}</strong>
+                    </div>
+                    <div style="text-align:left; max-height:120px; overflow-y:auto; margin-bottom:10px;">${listaHTML}</div>
+                    <input id="swal-n" class="swal2-input" placeholder="Nombre completo" style="width:80%">
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Registrar',
+                preConfirm: () => document.getElementById('swal-n').value || Swal.showValidationMessage('Nombre requerido')
+            });
+
+            if (nombreAlumno) {
+                if (inscritos >= max) return Swal.fire('Error', 'Sin cupos', 'error');
+                alumnos.push({ nombre: nombreAlumno, inst: filtroActual });
+                repo[id] = alumnos;
+                localStorage.setItem('capo_data', JSON.stringify(repo));
+                actualizarTablero();
+            }
+        }
+
+        window.borrarRegistro = (id, index) => {
+            let repo = JSON.parse(localStorage.getItem('capo_data'));
+            repo[id].splice(index, 1);
+            localStorage.setItem('capo_data', JSON.stringify(repo));
+            Swal.close();
+            actualizarTablero();
+        };
+
+        actualizarTablero();
+    </script>
+</body>
+</html>
